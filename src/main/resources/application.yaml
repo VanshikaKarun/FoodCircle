@@ -1,0 +1,11 @@
+spring:
+  application:
+    name: FoodCircle
+  datasource:
+    url: jdbc:postgresql://localhost:5432/foodcircle
+    username: foodcircle_app
+    password: ${FOODCIRCLE_DB_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false

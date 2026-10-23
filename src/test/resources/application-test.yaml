@@ -1,0 +1,7 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/foodcircle_test
+  jpa:
+    hibernate:
+      # Safe only because this is the throwaway test database: tables are built before the tests and dropped after.
+      ddl-auto: create-drop
