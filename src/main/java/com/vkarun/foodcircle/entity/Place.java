@@ -76,6 +76,17 @@ public class Place {
         this.createdAt = Instant.now();
     }
 
+    // Used by the OSM re-import: refresh what OSM may have changed. The identity (osmType, osmId), id and createdAt stay.
+    public void updateFromOsm(String name, PlaceCategory category, String cuisine,
+                              double latitude, double longitude, String address) {
+        this.name = name;
+        this.category = category;
+        this.cuisine = cuisine;
+        this.latitude = latitude;
+        this.longitude = longitude;
+        this.address = address;
+    }
+
     public void markClosed() {
         this.closedAt = Instant.now();
     }
