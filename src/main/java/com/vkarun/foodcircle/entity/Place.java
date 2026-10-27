@@ -7,8 +7,10 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import com.vkarun.foodcircle.geo.Geohash;
 import org.hibernate.annotations.Check;
 
 import java.time.Instant;
@@ -16,7 +18,8 @@ import java.time.Instant;
 // Java fields are camelCase; every column name is written out explicitly (D18).
 @Entity
 @Table(name = "places",
-        uniqueConstraints = @UniqueConstraint(name = "uk_places_osm", columnNames = {"osm_type", "osm_id"}))
+        uniqueConstraints = @UniqueConstraint(name = "uk_places_osm", columnNames = {"osm_type", "osm_id"}),
+        indexes = @Index(name = "idx_places_geohash", columnList = "geohash"))
 @Check(constraints = "latitude between -90 and 90 and longitude between -180 and 180")
 public class Place {
 
@@ -52,6 +55,13 @@ public class Place {
     @Column(name = "address", length = 300)
     private String address;
 
+    // The location as a geohash (Geohash.STORED_LENGTH characters), for the nearby search. Always set by our code, but the
+    // column is nullable because ddl-auto=update cannot add a NOT NULL column to a table that already has rows.
+    // Collation "C" compares byte by byte, which is what lets a normal index serve LIKE 'prefix%' (the database default,
+    // English_United States.1252, would not).
+    @Column(name = "geohash", length = 8, columnDefinition = "varchar(8) collate \"C\"")
+    private String geohash;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -73,6 +83,7 @@ public class Place {
         this.latitude = latitude;
         this.longitude = longitude;
         this.address = address;
+        this.geohash = Geohash.encode(latitude, longitude, Geohash.STORED_LENGTH);
         this.createdAt = Instant.now();
     }
 
@@ -85,6 +96,7 @@ public class Place {
         this.latitude = latitude;
         this.longitude = longitude;
         this.address = address;
+        this.geohash = Geohash.encode(latitude, longitude, Geohash.STORED_LENGTH);
     }
 
     public void markClosed() {
@@ -129,6 +141,10 @@ public class Place {
 
     public String getAddress() {
         return address;
+    }
+
+    public String getGeohash() {
+        return geohash;
     }
 
     public Instant getCreatedAt() {

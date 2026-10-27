@@ -12,6 +12,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.BatchSize;
 import org.hibernate.annotations.Check;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
@@ -66,7 +67,9 @@ public class Review {
     private Instant createdAt;
 
     // Not a column: the dishes live in review_dishes and point back through its review field.
+    // @BatchSize: when a list of reviews is shown, the dishes of up to 50 reviews load in one query instead of one query each.
     @OneToMany(mappedBy = "review", cascade = CascadeType.ALL, orphanRemoval = true)
+    @BatchSize(size = 50)
     private List<ReviewDish> dishes = new ArrayList<>();
 
     // Required by JPA (Hibernate creates objects through it); not for use in our own code.
