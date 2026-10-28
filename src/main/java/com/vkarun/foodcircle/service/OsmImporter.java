@@ -4,6 +4,7 @@ import com.vkarun.foodcircle.dto.ImportResult;
 import com.vkarun.foodcircle.dto.OsmPlaceData;
 import com.vkarun.foodcircle.entity.Place;
 import com.vkarun.foodcircle.repository.PlaceRepository;
+import jakarta.persistence.EntityManager;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.JsonNode;
@@ -16,13 +17,19 @@ import java.util.Optional;
 @Service
 public class OsmImporter {
 
+    // Every query Hibernate runs first "auto-flushes", i.e. dirty-checks every entity it has loaded so far. Without a
+    // periodic flush + clear the import is O(n squared): fine for 1.6k places, unusable for 100k (found by trying 100k).
+    private static final int BATCH_SIZE = 500;
+
     private final OsmElementParser parser;
     private final PlaceRepository placeRepository;
+    private final EntityManager entityManager;
     private final JsonMapper jsonMapper = JsonMapper.builder().build();
 
-    public OsmImporter(OsmElementParser parser, PlaceRepository placeRepository) {
+    public OsmImporter(OsmElementParser parser, PlaceRepository placeRepository, EntityManager entityManager) {
         this.parser = parser;
         this.placeRepository = placeRepository;
+        this.entityManager = entityManager;
     }
 
     // One transaction for the whole file: either every place is saved or none (a crash half-way leaves no half import).
@@ -52,6 +59,11 @@ public class OsmImporter {
                 placeRepository.save(new Place(data.osmType(), data.osmId(), data.name(), data.category(),
                         data.cuisine(), data.latitude(), data.longitude(), data.address()));
                 added++;
+            }
+
+            if ((added + updated) % BATCH_SIZE == 0) {
+                entityManager.flush();   // write the pending inserts/updates (still inside the one transaction)
+                entityManager.clear();   // forget the loaded entities so later flushes have almost nothing to check
             }
         }
         return new ImportResult(added, updated, skipped);

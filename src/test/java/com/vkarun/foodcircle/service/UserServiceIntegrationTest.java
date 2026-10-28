@@ -9,7 +9,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpStatus;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
+import com.vkarun.foodcircle.common.ApiException;
 
 import java.util.List;
 
@@ -30,7 +30,7 @@ class UserServiceIntegrationTest {
     }
 
     private HttpStatus statusOf(Throwable t) {
-        return HttpStatus.valueOf(((ResponseStatusException) t).getStatusCode().value());
+        return ((ApiException) t).getStatus();
     }
 
     @Test
@@ -48,7 +48,7 @@ class UserServiceIntegrationTest {
         newUser("asha");
 
         assertThatThrownBy(() -> newUser("asha"))
-                .isInstanceOf(ResponseStatusException.class)
+                .isInstanceOf(ApiException.class)
                 .satisfies(t -> assertThat(statusOf(t)).isEqualTo(HttpStatus.CONFLICT));
     }
 

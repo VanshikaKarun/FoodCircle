@@ -1,5 +1,6 @@
 package com.vkarun.foodcircle.service;
 
+import com.vkarun.foodcircle.common.ApiException;
 import com.vkarun.foodcircle.dto.CreateReviewRequest;
 import com.vkarun.foodcircle.dto.ReviewResponse;
 import com.vkarun.foodcircle.entity.Place;
@@ -8,14 +9,11 @@ import com.vkarun.foodcircle.entity.User;
 import com.vkarun.foodcircle.repository.PlaceRepository;
 import com.vkarun.foodcircle.repository.ReviewRepository;
 import org.springframework.data.domain.Limit;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
-// Temporary ResponseStatusExceptions again; day 6 replaces them with ProblemDetail handling.
 @Service
 public class ReviewService {
 
@@ -35,7 +33,7 @@ public class ReviewService {
         User user = userService.requireCurrentUser(currentUserId);
         Place place = findPlace(placeId);
         if (place.isClosed()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Place " + placeId + " is closed");
+            throw ApiException.conflict("Place " + placeId + " is closed");
         }
 
         Review review = new Review(user, place, request.foodRating(), request.ambienceRating(), request.text());
@@ -57,6 +55,6 @@ public class ReviewService {
 
     private Place findPlace(Long placeId) {
         return placeRepository.findById(placeId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Place " + placeId + " not found"));
+                .orElseThrow(() -> ApiException.notFound("Place " + placeId + " not found"));
     }
 }

@@ -20,6 +20,7 @@ import org.hibernate.annotations.OnDeleteAction;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -82,7 +83,8 @@ public class Review {
         this.foodRating = foodRating;
         this.ambienceRating = ambienceRating;
         this.text = text;
-        this.createdAt = Instant.now();
+        // Cut to microseconds, the precision PostgreSQL stores: a cursor built from this value must equal what the database holds.
+        this.createdAt = Instant.now().truncatedTo(ChronoUnit.MICROS);
     }
 
     public void addDish(String dishName, Boolean liked) {
