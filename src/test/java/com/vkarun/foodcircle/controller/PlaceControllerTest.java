@@ -7,15 +7,16 @@ import com.vkarun.foodcircle.service.PlaceService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-import org.springframework.http.HttpStatus;
+import com.vkarun.foodcircle.common.ApiException;
+import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -55,6 +56,18 @@ class PlaceControllerTest {
     }
 
     @Test
+    void nearbyNaive_hasTheSameContractAsNearby() throws Exception {
+        given(placeService.findNearbyNaive(17.385, 78.4867, 2.0)).willReturn(List.of(
+                new NearbyPlaceResponse(6L, "KFC", PlaceCategory.FAST_FOOD, "chicken", 17.39, 78.49, null, 0.5)));
+
+        mockMvc.perform(get("/api/places/nearby-naive").param("lat", "17.385").param("lng", "78.4867"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].distanceKm").value(0.5));
+        mockMvc.perform(get("/api/places/nearby-naive").param("lat", "95").param("lng", "78"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void nearby_rejectsBadParameters() throws Exception {
         mockMvc.perform(get("/api/places/nearby").param("lat", "95").param("lng", "78"))
                 .andExpect(status().isBadRequest());
@@ -70,9 +83,12 @@ class PlaceControllerTest {
 
     @Test
     void getPlace_unknownId_returns404() throws Exception {
-        given(placeService.getById(999L)).willThrow(new ResponseStatusException(HttpStatus.NOT_FOUND));
+        given(placeService.getById(999L)).willThrow(ApiException.notFound("Place 999 not found"));
 
         mockMvc.perform(get("/api/places/999"))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isNotFound())
+                .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.title").value("Not Found"))
+                .andExpect(jsonPath("$.detail").value("Place 999 not found"));
     }
 }

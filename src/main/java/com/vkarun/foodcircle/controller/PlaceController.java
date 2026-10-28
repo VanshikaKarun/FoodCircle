@@ -3,6 +3,8 @@ package com.vkarun.foodcircle.controller;
 import com.vkarun.foodcircle.dto.NearbyPlaceResponse;
 import com.vkarun.foodcircle.dto.PlaceResponse;
 import com.vkarun.foodcircle.service.PlaceService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -13,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
+@Tag(name = "Places")
 @RestController
 @RequestMapping("/api/places")
 public class PlaceController {
@@ -24,6 +27,8 @@ public class PlaceController {
     }
 
     // Fixed text "nearby" wins over the "/{id}" pattern, so the two paths do not clash.
+    @Operation(summary = "Open places within a radius of a point, nearest first",
+            description = "radiusKm defaults to 2 and may be at most 15. Uses a geohash index, then the exact distance.")
     @GetMapping("/nearby")
     public List<NearbyPlaceResponse> nearby(
             @RequestParam @DecimalMin("-90") @DecimalMax("90") double lat,
@@ -33,6 +38,18 @@ public class PlaceController {
         return placeService.findNearby(lat, lng, radiusKm);
     }
 
+    // Same answer as /nearby, found by checking every place. Exists only so the two approaches can be load-tested side by side.
+    @Operation(summary = "Benchmark baseline: the same search as /nearby, without the geohash index",
+            description = "Reads every open place and measures the distance to each. Not for normal use; it gets slower as the table grows.")
+    @GetMapping("/nearby-naive")
+    public List<NearbyPlaceResponse> nearbyNaive(
+            @RequestParam @DecimalMin("-90") @DecimalMax("90") double lat,
+            @RequestParam @DecimalMin("-180") @DecimalMax("180") double lng,
+            @RequestParam(defaultValue = "2") @DecimalMin(value = "0", inclusive = false) @DecimalMax("15") double radiusKm) {
+        return placeService.findNearbyNaive(lat, lng, radiusKm);
+    }
+
+    @Operation(summary = "One place by id")
     @GetMapping("/{id}")
     public PlaceResponse getPlace(@PathVariable Long id) {
         return placeService.getById(id);

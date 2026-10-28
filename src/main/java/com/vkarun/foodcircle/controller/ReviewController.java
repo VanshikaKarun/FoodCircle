@@ -3,6 +3,8 @@ package com.vkarun.foodcircle.controller;
 import com.vkarun.foodcircle.dto.CreateReviewRequest;
 import com.vkarun.foodcircle.dto.ReviewResponse;
 import com.vkarun.foodcircle.service.ReviewService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -19,6 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
+@Tag(name = "Reviews")
 @RestController
 @RequestMapping("/api/places/{placeId}/reviews")
 public class ReviewController {
@@ -30,6 +33,8 @@ public class ReviewController {
     }
 
     // X-User-Id is the temporary "who am I" until real authentication in week 2.
+    @Operation(summary = "Review a place (the author is X-User-Id)",
+            description = "Food and ambience ratings are each 1 to 5; at least one is required. 409 if the place is closed.")
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ReviewResponse create(@PathVariable Long placeId,
@@ -39,6 +44,7 @@ public class ReviewController {
     }
 
     // The newest reviews of a place. Page-by-page browsing (cursors) comes with the feed on day 5.
+    @Operation(summary = "The newest reviews of a place")
     @GetMapping
     public List<ReviewResponse> list(@PathVariable Long placeId,
                                      @RequestParam(defaultValue = "20") @Min(1) @Max(50) int limit) {

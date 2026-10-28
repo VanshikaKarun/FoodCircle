@@ -86,6 +86,29 @@ class NearbyPlacesIntegrationTest {
     }
 
     @Test
+    void theGeohashSearchGivesExactlyTheSameAnswerAsTheNaiveScan() {
+        // 400 pseudo-random places over a 0.4 x 0.4 degree box (the Hyderabad box), a fixed seed so a failure can be repeated.
+        java.util.Random random = new java.util.Random(42);
+        for (int i = 1; i <= 400; i++) {
+            save(i, "p" + i, 17.2 + random.nextDouble() * 0.4, 78.25 + random.nextDouble() * 0.4);
+        }
+        // a few closed ones: neither search may return them
+        for (int i = 401; i <= 410; i++) {
+            save(i, "closed" + i, 17.4, 78.45).markClosed();
+        }
+
+        double[][] searches = {{17.385, 78.4867, 2}, {17.385, 78.4867, 0.3}, {17.30, 78.35, 5}, {17.5, 78.6, 15},
+                {17.2, 78.25, 4}, {17.6, 78.65, 1}, {17.4, 78.45, 0.05}};
+        for (double[] s : searches) {
+            List<NearbyPlaceResponse> geohash = placeService.findNearby(s[0], s[1], s[2]);
+            List<NearbyPlaceResponse> naive = placeService.findNearbyNaive(s[0], s[1], s[2]);
+
+            assertThat(geohash).as("search %s", java.util.Arrays.toString(s)).isEqualTo(naive);
+        }
+        assertThat(placeService.findNearbyNaive(17.385, 78.4867, 15)).isNotEmpty();
+    }
+
+    @Test
     void nothingNearby_returnsAnEmptyList() {
         assertThat(placeService.findNearby(LAT, LNG, 2)).isEmpty();
     }

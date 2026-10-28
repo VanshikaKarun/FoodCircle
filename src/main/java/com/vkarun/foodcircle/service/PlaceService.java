@@ -1,15 +1,14 @@
 package com.vkarun.foodcircle.service;
 
+import com.vkarun.foodcircle.common.ApiException;
 import com.vkarun.foodcircle.dto.NearbyPlaceResponse;
 import com.vkarun.foodcircle.dto.PlaceResponse;
 import com.vkarun.foodcircle.entity.Place;
 import com.vkarun.foodcircle.geo.Geohash;
 import com.vkarun.foodcircle.geo.Haversine;
 import com.vkarun.foodcircle.repository.PlaceRepository;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -26,10 +25,9 @@ public class PlaceService {
 
     @Transactional(readOnly = true)
     public PlaceResponse getById(Long id) {
-        // Temporary 404; day 6 replaces this with our own exception and the shared ProblemDetail handler.
         return placeRepository.findById(id)
                 .map(PlaceResponse::from)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Place " + id + " not found"));
+                .orElseThrow(() -> ApiException.notFound("Place " + id + " not found"));
     }
 
     // Open places within radiusKm of (latitude, longitude), nearest first.
@@ -50,6 +48,18 @@ public class PlaceService {
         }
 
         // 3. The exact filter: the cells are rectangles, the search area is a circle.
+        return withinRadius(candidates, latitude, longitude, radiusKm);
+    }
+
+    // The baseline for the day-7 comparison: no index, read every open place and measure the distance to each.
+    // Gives the same answer as findNearby; only the way of finding the candidates differs.
+    @Transactional(readOnly = true)
+    public List<NearbyPlaceResponse> findNearbyNaive(double latitude, double longitude, double radiusKm) {
+        return withinRadius(placeRepository.findAllOpen(), latitude, longitude, radiusKm);
+    }
+
+    // The exact filter shared by both searches: keep places within the radius, nearest first.
+    private static List<NearbyPlaceResponse> withinRadius(List<Place> candidates, double latitude, double longitude, double radiusKm) {
         record Candidate(Place place, double distanceKm) {
         }
         return candidates.stream()

@@ -1,5 +1,6 @@
 package com.vkarun.foodcircle.service;
 
+import com.vkarun.foodcircle.common.ApiException;
 import com.vkarun.foodcircle.dto.CreateUserRequest;
 import com.vkarun.foodcircle.dto.UserResponse;
 import com.vkarun.foodcircle.dto.UserSummary;
@@ -7,14 +8,11 @@ import com.vkarun.foodcircle.entity.Follow;
 import com.vkarun.foodcircle.entity.User;
 import com.vkarun.foodcircle.repository.FollowRepository;
 import com.vkarun.foodcircle.repository.UserRepository;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
-// The errors below are temporary ResponseStatusExceptions; day 6 replaces them with our own exceptions and ProblemDetail.
 @Service
 public class UserService {
 
@@ -29,7 +27,7 @@ public class UserService {
     @Transactional
     public UserResponse create(CreateUserRequest request) {
         if (userRepository.existsByUsername(request.username())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Username '" + request.username() + "' is taken");
+            throw ApiException.conflict("Username '" + request.username() + "' is taken");
         }
         User user = userRepository.save(new User(request.username(), request.displayName()));
         return UserResponse.from(user, 0, 0);
@@ -45,7 +43,7 @@ public class UserService {
     @Transactional
     public void follow(Long currentUserId, Long targetId) {
         if (currentUserId.equals(targetId)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "You cannot follow yourself");
+            throw ApiException.badRequest("You cannot follow yourself");
         }
         User me = requireCurrentUser(currentUserId);
         User target = findUser(targetId);
@@ -77,11 +75,16 @@ public class UserService {
     // Real authentication replaces this in week 2.
     public User requireCurrentUser(Long currentUserId) {
         return userRepository.findById(currentUserId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unknown user in X-User-Id"));
+                .orElseThrow(() -> ApiException.unauthorized("Unknown user in X-User-Id"));
+    }
+
+    // For other services that need "this user must exist" (404 otherwise).
+    public User requireExisting(Long id) {
+        return findUser(id);
     }
 
     private User findUser(Long id) {
         return userRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User " + id + " not found"));
+                .orElseThrow(() -> ApiException.notFound("User " + id + " not found"));
     }
 }
