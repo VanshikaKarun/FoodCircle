@@ -26,8 +26,11 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(ApiExceptionHandler.class);
 
+    // Our 4xx answers are normal outcomes for the client (not found, conflict...), not bugs, so DEBUG and no stack trace.
+    // Logged here once, so the services do not have to log before every throw.
     @ExceptionHandler(ApiException.class)
     public ProblemDetail handleApi(ApiException e) {
+        log.debug("{} {}", e.getStatus().value(), e.getMessage());
         return ProblemDetail.forStatusAndDetail(e.getStatus(), e.getMessage());
     }
 
@@ -44,6 +47,14 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
     public ProblemDetail handleUnexpected(Exception e) {
         log.error("Unexpected error", e);
         return ProblemDetail.forStatusAndDetail(HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred");
+    }
+
+    // Every Spring-detected client error (bad JSON, failed validation, missing header, unknown URL...) ends here.
+    @Override
+    protected ResponseEntity<Object> handleExceptionInternal(Exception ex, Object body, HttpHeaders headers,
+                                                             HttpStatusCode statusCode, WebRequest request) {
+        log.debug("{} {}: {}", statusCode.value(), ex.getClass().getSimpleName(), ex.getMessage());
+        return super.handleExceptionInternal(ex, body, headers, statusCode, request);
     }
 
     // A request body that failed @Valid: add which fields and why.

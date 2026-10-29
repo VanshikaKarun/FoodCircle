@@ -5,6 +5,8 @@ import com.vkarun.foodcircle.dto.OsmPlaceData;
 import com.vkarun.foodcircle.entity.Place;
 import com.vkarun.foodcircle.repository.PlaceRepository;
 import jakarta.persistence.EntityManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.JsonNode;
@@ -16,6 +18,8 @@ import java.util.Optional;
 // The coordinator: reads the Overpass file, asks the parser about each entry, saves through the repository.
 @Service
 public class OsmImporter {
+
+    private static final Logger log = LoggerFactory.getLogger(OsmImporter.class);
 
     // Every query Hibernate runs first "auto-flushes", i.e. dirty-checks every entity it has loaded so far. Without a
     // periodic flush + clear the import is O(n squared): fine for 1.6k places, unusable for 100k (found by trying 100k).
@@ -36,6 +40,7 @@ public class OsmImporter {
     @Transactional
     public ImportResult importFile(Path file) {
         JsonNode elements = jsonMapper.readTree(file).path("elements");
+        log.info("OSM import started: {} elements in {}", elements.size(), file);
 
         int added = 0;
         int updated = 0;
@@ -64,6 +69,8 @@ public class OsmImporter {
             if ((added + updated) % BATCH_SIZE == 0) {
                 entityManager.flush();   // write the pending inserts/updates (still inside the one transaction)
                 entityManager.clear();   // forget the loaded entities so later flushes have almost nothing to check
+                log.debug("OSM import progress: {} saved ({} added, {} updated), {} skipped",
+                        added + updated, added, updated, skipped);
             }
         }
         return new ImportResult(added, updated, skipped);

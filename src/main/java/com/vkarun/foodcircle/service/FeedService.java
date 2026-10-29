@@ -7,6 +7,8 @@ import com.vkarun.foodcircle.dto.ReviewResponse;
 import com.vkarun.foodcircle.entity.Review;
 import com.vkarun.foodcircle.repository.PlaceRepository;
 import com.vkarun.foodcircle.repository.ReviewRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,6 +19,8 @@ import java.util.List;
 // Reads of reviews that are about people (the feed, one user's reviews, friends' reviews of a place).
 @Service
 public class FeedService {
+
+    private static final Logger log = LoggerFactory.getLogger(FeedService.class);
 
     private final ReviewRepository reviewRepository;
     private final PlaceRepository placeRepository;
@@ -38,7 +42,11 @@ public class FeedService {
         List<Review> rows = cursor == null
                 ? reviewRepository.findFeedFirstPage(currentUserId, fetch)
                 : reviewRepository.findFeedAfter(currentUserId, cursor.createdAt(), cursor.id(), fetch);
-        return toPage(rows, limit);
+        CursorPage<ReviewResponse> page = toPage(rows, limit);
+        log.debug("feed of user {} ({}) limit={} -> {} items, more={}",
+                currentUserId, cursor == null ? "first page" : "after cursor", limit,
+                page.items().size(), page.nextCursor() != null);
+        return page;
     }
 
     // One user's reviews, newest first. For the caller's own reviews, pass their own id.
@@ -50,7 +58,11 @@ public class FeedService {
         List<Review> rows = cursor == null
                 ? reviewRepository.findByUserFirstPage(userId, fetch)
                 : reviewRepository.findByUserAfter(userId, cursor.createdAt(), cursor.id(), fetch);
-        return toPage(rows, limit);
+        CursorPage<ReviewResponse> page = toPage(rows, limit);
+        log.debug("reviews of user {} ({}) limit={} -> {} items, more={}",
+                userId, cursor == null ? "first page" : "after cursor", limit,
+                page.items().size(), page.nextCursor() != null);
+        return page;
     }
 
     // The people the caller follows who reviewed this place: their latest review of it each, newest first.
@@ -59,10 +71,12 @@ public class FeedService {
         userService.requireCurrentUser(currentUserId);
         placeRepository.findById(placeId)
                 .orElseThrow(() -> ApiException.notFound("Place " + placeId + " not found"));
-        return reviewRepository.findLatestReviewPerFollowee(placeId, currentUserId).stream()
+        List<ReviewResponse> result = reviewRepository.findLatestReviewPerFollowee(placeId, currentUserId).stream()
                 .sorted(Comparator.comparing(Review::getCreatedAt).thenComparing(Review::getId).reversed())
                 .map(ReviewResponse::from)
                 .toList();
+        log.debug("friends' reviews of place {} for user {} -> {} reviews", placeId, currentUserId, result.size());
+        return result;
     }
 
     private CursorPage<ReviewResponse> toPage(List<Review> rows, int limit) {

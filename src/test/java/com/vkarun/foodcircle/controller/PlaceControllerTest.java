@@ -82,6 +82,30 @@ class PlaceControllerTest {
     }
 
     @Test
+    void searchByName_returnsMatches_andDefaultsTheLimitTo20() throws Exception {
+        given(placeService.searchByName("para", 20)).willReturn(List.of(
+                new PlaceResponse(6L, "Hotel Paradise", PlaceCategory.RESTAURANT, "biryani", 17.45, 78.37, null, false)));
+
+        mockMvc.perform(get("/api/places").param("name", "para"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].name").value("Hotel Paradise"));
+    }
+
+    @Test
+    void searchByName_rejectsBadParameters() throws Exception {
+        mockMvc.perform(get("/api/places"))   // name missing
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(get("/api/places").param("name", "a"))   // too short
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(get("/api/places").param("name", "x".repeat(51)))   // too long
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(get("/api/places").param("name", "para").param("limit", "0"))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(get("/api/places").param("name", "para").param("limit", "51"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void getPlace_unknownId_returns404() throws Exception {
         given(placeService.getById(999L)).willThrow(ApiException.notFound("Place 999 not found"));
 
