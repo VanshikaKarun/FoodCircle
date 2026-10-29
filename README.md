@@ -14,6 +14,7 @@ Java 21 · Spring Boot 4.1 · PostgreSQL 18 · Spring Data JPA (Hibernate) · Gr
 ## What it does
 
 - **Nearby search** - `GET /api/places/nearby?lat=&lng=&radiusKm=` returns the open places within a radius, nearest first, with the distance of each.
+- **Search by name** - `GET /api/places?name=` finds a specific place by part of its name.
 - **Reviews** - food and ambience ratings (1-5, each optional, at least one required), text, and the dishes tried. The overall rating is the average of the ratings given.
 - **Social graph** - follow and unfollow users; follower and following lists with counts.
 - **Feed** - reviews from the people you follow, newest first, with cursor pagination. Your own reviews and "people I follow who reviewed this place" are separate endpoints.
@@ -158,6 +159,12 @@ The exact request text of the original download was not saved, and this query ha
 
 Hibernate creates the tables on first start. Endpoints that need to know who you are take an `X-User-Id` header with a user id (create one with `POST /api/users`). **This is a temporary stand-in for authentication and is not secure.**
 
+**Logging:** the app logs at INFO by default (users created, follows, reviews posted, import progress). For detail on reads (nearby search: cells read vs places within the radius, feed paging, rejected requests), start it with DEBUG:
+
+```powershell
+.\gradlew.bat bootRun --args="--logging.level.com.vkarun.foodcircle=debug"
+```
+
 **Tests:**
 
 ```powershell
@@ -177,6 +184,7 @@ k6 run -e ENDPOINT=nearby-naive load-test/nearby.js
 | Method and path | Purpose |
 |---|---|
 | `GET /api/places/nearby?lat=&lng=&radiusKm=` | open places within the radius (default 2, max 15 km), nearest first |
+| `GET /api/places?name=&limit=` | open places whose name contains the text, ignoring case, sorted by name (name 2-50 characters, limit default 20, max 50) |
 | `GET /api/places/{id}` | one place |
 | `POST /api/users` · `GET /api/users/{id}` | create a user · profile with follower and following counts |
 | `POST` / `DELETE /api/users/{id}/follow` | follow / unfollow (both idempotent; following yourself is a 400) |
@@ -190,7 +198,7 @@ Full details and examples: Swagger UI.
 
 ## Tests
 
-112 automated tests: pure unit tests (geohash, haversine, cursor, OSM parsing), controller slice tests (`@WebMvcTest`, including the shape of every error response), repository tests against a real PostgreSQL (`@DataJpaTest`) that check the data-model rules (uniqueness, check constraints, cascade and restrict deletes), and service integration tests (`@SpringBootTest`) for the nearby search, the feed paging and the importer. The database tests do not use H2 on purpose: PostgreSQL's constraints and collation are part of the design.
+122 automated tests: pure unit tests (geohash, haversine, cursor, OSM parsing, the name-search escaping), controller slice tests (`@WebMvcTest`, including the shape of every error response), repository tests against a real PostgreSQL (`@DataJpaTest`) that check the data-model rules (uniqueness, check constraints, cascade and restrict deletes), and service integration tests (`@SpringBootTest`) for the nearby search, the feed paging and the importer. The database tests do not use H2 on purpose: PostgreSQL's constraints and collation are part of the design.
 
 ## Limitations
 

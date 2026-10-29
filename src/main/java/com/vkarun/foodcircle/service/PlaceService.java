@@ -7,6 +7,9 @@ import com.vkarun.foodcircle.entity.Place;
 import com.vkarun.foodcircle.geo.Geohash;
 import com.vkarun.foodcircle.geo.Haversine;
 import com.vkarun.foodcircle.repository.PlaceRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,6 +19,11 @@ import java.util.List;
 
 @Service
 public class PlaceService {
+
+    private static final Logger log = LoggerFactory.getLogger(PlaceService.class);
+
+    // A one-letter search would match most of the table.
+    static final int MIN_NAME_SEARCH_LENGTH = 2;
 
     private final PlaceRepository placeRepository;
 
@@ -48,14 +56,47 @@ public class PlaceService {
         }
 
         // 3. The exact filter: the cells are rectangles, the search area is a circle.
-        return withinRadius(candidates, latitude, longitude, radiusKm);
+        List<NearbyPlaceResponse> result = withinRadius(candidates, latitude, longitude, radiusKm);
+        // candidates vs result shows how much the 3x3 block over-reads. Coordinates are left out on purpose (user location).
+        log.debug("nearby radius={}km geohash length={} cells={} -> {} read, {} within radius",
+                radiusKm, length, cells.size(), candidates.size(), result.size());
+        return result;
+    }
+
+    // Open places whose name contains the text, ignoring case, sorted by name.
+    @Transactional(readOnly = true)
+    public List<PlaceResponse> searchByName(String name, int limit) {
+        String text = name.trim();
+        if (text.length() < MIN_NAME_SEARCH_LENGTH) {   // the controller checks the raw text; spaces around it do not count
+            throw ApiException.badRequest("Search text must have at least " + MIN_NAME_SEARCH_LENGTH + " characters");
+        }
+        List<PlaceResponse> result = placeRepository.findOpenByNamePattern(likePattern(text), Limit.of(limit))
+                .stream()
+                .map(PlaceResponse::from)
+                .toList();
+        log.debug("name search \"{}\" limit={} -> {} results", text, limit, result.size());
+        return result;
+    }
+
+    // "%text%" for LIKE. In LIKE, % and _ are wildcards and \ is our escape character, so each of them typed by the
+    // user gets a backslash and is then matched as plain text. The backslash must be escaped first, or the backslashes
+    // added for % and _ would be doubled.
+    static String likePattern(String text) {
+        String escaped = text
+                .replace("\\", "\\\\")
+                .replace("%", "\\%")
+                .replace("_", "\\_");
+        return "%" + escaped + "%";
     }
 
     // The baseline for the day-7 comparison: no index, read every open place and measure the distance to each.
     // Gives the same answer as findNearby; only the way of finding the candidates differs.
     @Transactional(readOnly = true)
     public List<NearbyPlaceResponse> findNearbyNaive(double latitude, double longitude, double radiusKm) {
-        return withinRadius(placeRepository.findAllOpen(), latitude, longitude, radiusKm);
+        List<Place> all = placeRepository.findAllOpen();
+        List<NearbyPlaceResponse> result = withinRadius(all, latitude, longitude, radiusKm);
+        log.debug("nearby-naive radius={}km -> {} read, {} within radius", radiusKm, all.size(), result.size());
+        return result;
     }
 
     // The exact filter shared by both searches: keep places within the radius, nearest first.

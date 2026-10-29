@@ -7,6 +7,9 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Size;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -24,6 +27,16 @@ public class PlaceController {
 
     public PlaceController(PlaceService placeService) {
         this.placeService = placeService;
+    }
+
+    @Operation(summary = "Find open places by name, ignoring case",
+            description = "The text may appear anywhere in the name ('para' finds 'Hotel Paradise'). Sorted by name. "
+                    + "name must have 2 to 50 characters; limit defaults to 20 and may be at most 50.")
+    @GetMapping
+    public List<PlaceResponse> searchByName(
+            @RequestParam @Size(min = 2, max = 50) String name,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(50) int limit) {
+        return placeService.searchByName(name, limit);
     }
 
     // Fixed text "nearby" wins over the "/{id}" pattern, so the two paths do not clash.
