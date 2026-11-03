@@ -44,7 +44,7 @@ class SocialRulesRepositoryTest {
     private JdbcTemplate jdbcTemplate;
 
     private User user(String username) {
-        return userRepository.save(new User(username, "Name of " + username));
+        return userRepository.save(new User(username, "Name of " + username, "not-a-real-hash"));
     }
 
     private Place place() {
@@ -58,7 +58,7 @@ class SocialRulesRepositoryTest {
         user("asha");
         userRepository.flush();
 
-        assertThatThrownBy(() -> userRepository.saveAndFlush(new User("asha", "Another Asha")))
+        assertThatThrownBy(() -> userRepository.saveAndFlush(new User("asha", "Another Asha", "not-a-real-hash")))
                 .isInstanceOf(DataIntegrityViolationException.class);
     }
 

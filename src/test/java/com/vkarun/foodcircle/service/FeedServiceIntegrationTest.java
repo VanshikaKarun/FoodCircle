@@ -49,7 +49,7 @@ class FeedServiceIntegrationTest {
     private JdbcTemplate jdbcTemplate;
 
     private Long newUser(String username) {
-        return userService.create(new CreateUserRequest(username, "Name of " + username)).id();
+        return userService.create(new CreateUserRequest(username, "Name of " + username, "password123")).id();
     }
 
     private Long newPlace(long osmId) {

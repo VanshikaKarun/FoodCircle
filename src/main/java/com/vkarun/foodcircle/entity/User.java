@@ -25,6 +25,10 @@ public class User {
     @Column(name = "display_name", nullable = false, length = 60)
     private String displayName;
 
+    // A BCrypt hash, never the password itself. Always 60 characters.
+    @Column(name = "password_hash", nullable = false, length = 60)
+    private String passwordHash;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -32,9 +36,10 @@ public class User {
     protected User() {
     }
 
-    public User(String username, String displayName) {
+    public User(String username, String displayName, String passwordHash) {
         this.username = username;
         this.displayName = displayName;
+        this.passwordHash = passwordHash;
         this.createdAt = Instant.now();
     }
 
@@ -52,5 +57,9 @@ public class User {
 
     public Instant getCreatedAt() {
         return createdAt;
+    }
+
+    public String getPasswordHash() {
+        return passwordHash;
     }
 }

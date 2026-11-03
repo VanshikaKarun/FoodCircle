@@ -10,6 +10,7 @@ import com.vkarun.foodcircle.repository.FollowRepository;
 import com.vkarun.foodcircle.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,10 +23,12 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final FollowRepository followRepository;
+    private final PasswordEncoder passwordEncoder;
 
-    public UserService(UserRepository userRepository, FollowRepository followRepository) {
+    public UserService(UserRepository userRepository, FollowRepository followRepository, PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.followRepository = followRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Transactional
@@ -33,7 +36,9 @@ public class UserService {
         if (userRepository.existsByUsername(request.username())) {
             throw ApiException.conflict("Username '" + request.username() + "' is taken");
         }
-        User user = userRepository.save(new User(request.username(), request.displayName()));
+        // Only the hash is stored; the raw password is never saved or logged.
+        String passwordHash = passwordEncoder.encode(request.password());
+        User user = userRepository.save(new User(request.username(), request.displayName(), passwordHash));
         log.info("user {} created with username {}", user.getId(), user.getUsername());
         return UserResponse.from(user, 0, 0);
     }

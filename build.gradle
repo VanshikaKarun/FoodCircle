@@ -27,12 +27,17 @@ dependencies {
     runtimeOnly 'org.postgresql:postgresql'
     // Swagger UI + OpenAPI document. 3.1.1 was the version for Boot 4.1 (checked 2026-09-19); 3.2.0 came out 2026-10-24, too new to trust yet.
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.1.1'
+    // Auth (D38): Spring Security + JWT checking as an OAuth2 resource server. Names checked on start.spring.io for Boot 4.1.1 (2026-10-30).
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.boot:spring-boot-starter-security-oauth2-resource-server'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-validation-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-actuator-test'
+    testImplementation 'org.springframework.boot:spring-boot-starter-security-test'
+    testImplementation 'org.springframework.boot:spring-boot-starter-security-oauth2-resource-server-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
