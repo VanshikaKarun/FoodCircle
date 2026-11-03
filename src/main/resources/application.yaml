@@ -13,3 +13,8 @@ spring:
 logging:
   level:
     com.vkarun.foodcircle: info
+
+foodcircle:
+  jwt:
+    secret: ${FOODCIRCLE_JWT_SECRET}
+    expiry: 1h

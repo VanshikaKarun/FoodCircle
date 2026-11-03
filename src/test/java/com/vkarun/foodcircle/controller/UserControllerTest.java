@@ -29,7 +29,7 @@ class UserControllerTest {
     private UserService userService;
 
     private String json(String username, String displayName) {
-        return "{\"username\":" + username + ",\"displayName\":" + displayName + "}";
+        return "{\"username\":" + username + ",\"displayName\":" + displayName + ",\"password\":\"password123\"}";
     }
 
     @Test

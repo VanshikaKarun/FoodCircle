@@ -10,6 +10,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 import com.vkarun.foodcircle.common.ApiException;
+import com.vkarun.foodcircle.repository.UserRepository;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.List;
 
@@ -25,8 +27,14 @@ class UserServiceIntegrationTest {
     @Autowired
     private UserService userService;
 
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
     private Long newUser(String username) {
-        return userService.create(new CreateUserRequest(username, "Name of " + username)).id();
+        return userService.create(new CreateUserRequest(username, "Name of " + username, "password123")).id();
     }
 
     private HttpStatus statusOf(Throwable t) {
@@ -35,12 +43,33 @@ class UserServiceIntegrationTest {
 
     @Test
     void create_returnsTheUserWithZeroCounts() {
-        UserResponse user = userService.create(new CreateUserRequest("asha", "Asha K"));
+        UserResponse user = userService.create(new CreateUserRequest("asha", "Asha K", "password123"));
 
         assertThat(user.id()).isNotNull();
         assertThat(user.username()).isEqualTo("asha");
         assertThat(user.followerCount()).isZero();
         assertThat(user.followingCount()).isZero();
+    }
+
+    @Test
+    void create_storesABcryptHash_neverThePassword() {
+        Long id = userService.create(new CreateUserRequest("asha", "Asha K", "password123")).id();
+
+        String stored = userRepository.findById(id).orElseThrow().getPasswordHash();
+        assertThat(stored).isNotEqualTo("password123");
+        assertThat(stored).startsWith("$2a$10$").hasSize(60);    // BCrypt, cost 10 (Spring's default)
+        assertThat(passwordEncoder.matches("password123", stored)).isTrue();
+        assertThat(passwordEncoder.matches("password124", stored)).isFalse();
+    }
+
+    @Test
+    void create_samePasswordTwice_givesDifferentHashes() {
+        Long asha = newUser("asha");
+        Long ravi = newUser("ravi");    // both use "password123"
+
+        String ashaHash = userRepository.findById(asha).orElseThrow().getPasswordHash();
+        String raviHash = userRepository.findById(ravi).orElseThrow().getPasswordHash();
+        assertThat(ashaHash).isNotEqualTo(raviHash);    // random salt per hash
     }
 
     @Test

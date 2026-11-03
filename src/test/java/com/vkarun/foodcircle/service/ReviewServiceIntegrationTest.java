@@ -38,7 +38,7 @@ class ReviewServiceIntegrationTest {
     private PlaceRepository placeRepository;
 
     private Long newUser(String username) {
-        return userService.create(new CreateUserRequest(username, "Name of " + username)).id();
+        return userService.create(new CreateUserRequest(username, "Name of " + username, "password123")).id();
     }
 
     private Place newPlace(long osmId) {
