@@ -5,6 +5,9 @@ import com.vkarun.foodcircle.dto.PlaceResponse;
 import com.vkarun.foodcircle.entity.PlaceCategory;
 import com.vkarun.foodcircle.service.PlaceService;
 import org.junit.jupiter.api.Test;
+import com.vkarun.foodcircle.common.SecurityConfig;
+import org.springframework.context.annotation.Import;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import com.vkarun.foodcircle.common.ApiException;
@@ -22,10 +25,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 // Controller slice: only the web layer is started; the service is a mock, so no database is needed.
 @WebMvcTest(PlaceController.class)
+@Import(SecurityConfig.class)
 class PlaceControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    // SecurityConfig needs a JwtDecoder bean; tests never decode a real token (jwt() below fakes a logged-in caller).
+    @MockitoBean
+    private JwtDecoder jwtDecoder;
 
     @MockitoBean
     private PlaceService placeService;

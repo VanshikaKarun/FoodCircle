@@ -29,7 +29,7 @@ public final class ApiException extends RuntimeException {
         return new ApiException(HttpStatus.BAD_REQUEST, message);
     }
 
-    // 401: we do not know who is calling (today: an unknown id in X-User-Id; week 2: a missing or bad token).
+    // 401: we do not know who is calling (wrong login, or a valid token whose user no longer exists).
     public static ApiException unauthorized(String message) {
         return new ApiException(HttpStatus.UNAUTHORIZED, message);
     }

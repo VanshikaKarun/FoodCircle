@@ -3,6 +3,9 @@ package com.vkarun.foodcircle.controller;
 import com.vkarun.foodcircle.dto.ReviewResponse;
 import com.vkarun.foodcircle.service.ReviewService;
 import org.junit.jupiter.api.Test;
+import com.vkarun.foodcircle.common.SecurityConfig;
+import org.springframework.context.annotation.Import;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.MediaType;
@@ -15,22 +18,28 @@ import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(ReviewController.class)
+@Import(SecurityConfig.class)
 class ReviewControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
 
+    // SecurityConfig needs a JwtDecoder bean; tests never decode a real token (jwt() below fakes a logged-in caller).
+    @MockitoBean
+    private JwtDecoder jwtDecoder;
+
     @MockitoBean
     private ReviewService reviewService;
 
     private org.springframework.test.web.servlet.ResultActions postReview(String body) throws Exception {
-        return mockMvc.perform(post("/api/places/5/reviews").header("X-User-Id", "3")
+        return mockMvc.perform(post("/api/places/5/reviews").with(jwt().jwt(j -> j.subject("3")))
                 .contentType(MediaType.APPLICATION_JSON).content(body));
     }
 
@@ -61,9 +70,10 @@ class ReviewControllerTest {
     }
 
     @Test
-    void create_withoutTheUserHeader_returns400() throws Exception {
-        mockMvc.perform(post("/api/places/5/reviews").contentType(MediaType.APPLICATION_JSON).content("{\"foodRating\":3}"))
-                .andExpect(status().isBadRequest());
+    void create_withoutAToken_returns401() throws Exception {
+        mockMvc.perform(post("/api/places/5/reviews")
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"foodRating\":3}"))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test

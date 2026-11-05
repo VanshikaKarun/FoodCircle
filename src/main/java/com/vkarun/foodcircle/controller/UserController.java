@@ -8,19 +8,20 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Objects;
 
-// X-User-Id is the temporary "who am I" until real authentication in week 2.
 @Tag(name = "Users and follows")
 @RestController
 @RequestMapping("/api/users")
@@ -45,18 +46,18 @@ public class UserController {
         return userService.getById(id);
     }
 
-    @Operation(summary = "Follow a user (the caller is X-User-Id)", description = "Repeating it is harmless. Following yourself is a 400.")
+    @Operation(summary = "Follow a user (the caller is the logged-in user)", description = "Repeating it is harmless. Following yourself is a 400.")
     @PostMapping("/{id}/follow")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void follow(@PathVariable Long id, @RequestHeader("X-User-Id") Long currentUserId) {
-        userService.follow(currentUserId, id);
+    public void follow(@PathVariable Long id, @AuthenticationPrincipal Jwt jwt) {
+        userService.follow(Long.valueOf(Objects.requireNonNull(jwt.getSubject())), id);
     }
 
     @Operation(summary = "Unfollow a user", description = "Repeating it is harmless.")
     @DeleteMapping("/{id}/follow")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void unfollow(@PathVariable Long id, @RequestHeader("X-User-Id") Long currentUserId) {
-        userService.unfollow(currentUserId, id);
+    public void unfollow(@PathVariable Long id, @AuthenticationPrincipal Jwt jwt) {
+        userService.unfollow(Long.valueOf(Objects.requireNonNull(jwt.getSubject())), id);
     }
 
     @Operation(summary = "Who follows this user, newest follow first")

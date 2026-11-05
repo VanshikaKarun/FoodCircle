@@ -5,6 +5,8 @@ import com.vkarun.foodcircle.controller.UserController;
 import com.vkarun.foodcircle.service.FeedService;
 import com.vkarun.foodcircle.service.UserService;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.annotation.Import;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -14,6 +16,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
 import static org.mockito.BDDMockito.given;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -23,10 +26,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 // Every error the API can produce must be an RFC 9457 problem document: application/problem+json with status, title and detail.
 @WebMvcTest({UserController.class, FeedController.class})
+@Import(SecurityConfig.class)
 class ApiExceptionHandlerTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    // SecurityConfig needs a JwtDecoder bean; tests never decode a real token (jwt() below fakes a logged-in caller).
+    @MockitoBean
+    private JwtDecoder jwtDecoder;
 
     @MockitoBean
     private UserService userService;
@@ -45,7 +53,7 @@ class ApiExceptionHandlerTest {
     void ourExceptions_becomeProblemsWithTheirOwnStatusAndMessage() throws Exception {
         given(userService.getById(1L)).willThrow(ApiException.notFound("User 1 not found"));
         given(userService.getById(2L)).willThrow(ApiException.conflict("Username taken"));
-        given(userService.getById(3L)).willThrow(ApiException.unauthorized("Unknown user in X-User-Id"));
+        given(userService.getById(3L)).willThrow(ApiException.unauthorized("Unknown user"));
         given(userService.getById(4L)).willThrow(ApiException.badRequest("You cannot follow yourself"));
 
         expectProblem(mockMvc.perform(get("/api/users/1")), 404, "Not Found").andExpect(jsonPath("$.detail").value("User 1 not found"));
@@ -83,7 +91,7 @@ class ApiExceptionHandlerTest {
 
     @Test
     void aBadParameter_is400_andNamesTheParameter() throws Exception {
-        expectProblem(mockMvc.perform(get("/api/feed").header("X-User-Id", "1").param("limit", "0")), 400, "Bad Request")
+        expectProblem(mockMvc.perform(get("/api/feed").with(jwt().jwt(j -> j.subject("1"))).param("limit", "0")), 400, "Bad Request")
                 .andExpect(jsonPath("$.errors[0].field").value("limit"));
     }
 
@@ -91,14 +99,12 @@ class ApiExceptionHandlerTest {
     void springsOwnFailures_areProblemsToo() throws Exception {
         // malformed JSON
         expectProblem(mockMvc.perform(post("/api/users").contentType(MediaType.APPLICATION_JSON).content("{not json")), 400, "Bad Request");
-        // a missing header
-        expectProblem(mockMvc.perform(get("/api/feed")), 400, "Bad Request");
         // an id that is not a number
         expectProblem(mockMvc.perform(get("/api/users/abc")), 400, "Bad Request");
         // a URL that does not exist
         expectProblem(mockMvc.perform(get("/api/nothing-here")), 404, "Not Found");
         // a method the URL does not support
-        expectProblem(mockMvc.perform(put("/api/users/1")), 405, "Method Not Allowed");
+        expectProblem(mockMvc.perform(put("/api/users/1").with(jwt())), 405, "Method Not Allowed");
         // a body in a format we do not accept
         expectProblem(mockMvc.perform(post("/api/users").contentType(MediaType.TEXT_PLAIN).content("hello")), 415, "Unsupported Media Type");
     }

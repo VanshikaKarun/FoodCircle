@@ -134,6 +134,14 @@ $env:FOODCIRCLE_DB_PASSWORD = '<the password>'      # PowerShell
 # export FOODCIRCLE_DB_PASSWORD='<the password>'    # bash
 ```
 
+The app also needs the key that signs login tokens: at least 32 random bytes, Base64-encoded. The app refuses to start without it. Generate one and keep it out of every file:
+
+```powershell
+$bytes = New-Object byte[] 32; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
+$env:FOODCIRCLE_JWT_SECRET = [Convert]::ToBase64String($bytes)
+# bash: export FOODCIRCLE_JWT_SECRET=$(openssl rand -base64 32)
+```
+
 **3. Get the place data.** It is not in the repository. Download Hyderabad's cafes, restaurants and fast-food places from OpenStreetMap's [Overpass API](https://overpass-api.de/) and save the result as `data/osm/hyderabad-food-places.json`. The measurements here used the filter `amenity` = `restaurant`, `cafe` or `fast_food` inside the bounding box 17.20-17.60 N, 78.25-78.65 E, with the centre point for building outlines. A query of that shape:
 
 ```
@@ -157,7 +165,7 @@ The exact request text of the original download was not saved, and this query ha
 # http://localhost:8080/swagger-ui/index.html
 ```
 
-Hibernate creates the tables on first start. Endpoints that need to know who you are take an `X-User-Id` header with a user id (create one with `POST /api/users`). **This is a temporary stand-in for authentication and is not secure.**
+Hibernate creates the tables on first start. To call the endpoints that need to know who you are, create a user (`POST /api/users`), log in (`POST /api/auth/login`) and send the returned token as `Authorization: Bearer <accessToken>`. The token is valid for 1 hour. All reads, sign-up and login are public.
 
 **Logging:** the app logs at INFO by default (users created, follows, reviews posted, import progress). For detail on reads (nearby search: cells read vs places within the radius, feed paging, rejected requests), start it with DEBUG:
 
@@ -186,7 +194,8 @@ k6 run -e ENDPOINT=nearby-naive load-test/nearby.js
 | `GET /api/places/nearby?lat=&lng=&radiusKm=` | open places within the radius (default 2, max 15 km), nearest first |
 | `GET /api/places?name=&limit=` | open places whose name contains the text, ignoring case, sorted by name (name 2-50 characters, limit default 20, max 50) |
 | `GET /api/places/{id}` | one place |
-| `POST /api/users` · `GET /api/users/{id}` | create a user · profile with follower and following counts |
+| `POST /api/users` · `GET /api/users/{id}` | sign up (username, display name, password of 8-72 characters) · profile with follower and following counts |
+| `POST /api/auth/login` | username + password → `{accessToken, tokenType: "Bearer", expiresIn: 3600}`; a wrong username or password gives the same 401 |
 | `POST` / `DELETE /api/users/{id}/follow` | follow / unfollow (both idempotent; following yourself is a 400) |
 | `GET /api/users/{id}/followers` · `/following` | the two lists |
 | `POST /api/places/{id}/reviews` · `GET` | write a review with dishes · newest reviews of a place |
@@ -194,15 +203,18 @@ k6 run -e ENDPOINT=nearby-naive load-test/nearby.js
 | `GET /api/users/{id}/reviews?cursor=&limit=` | one user's reviews (pass your own id for yours) |
 | `GET /api/places/{id}/friends-reviews` | people I follow who reviewed this place: their latest review each |
 
+**Needs a token:** `GET /api/feed`, `GET /api/places/{id}/friends-reviews`, follow/unfollow, posting a review. The caller is always the user inside the token.
+
 Full details and examples: Swagger UI.
 
 ## Tests
 
-122 automated tests: pure unit tests (geohash, haversine, cursor, OSM parsing, the name-search escaping), controller slice tests (`@WebMvcTest`, including the shape of every error response), repository tests against a real PostgreSQL (`@DataJpaTest`) that check the data-model rules (uniqueness, check constraints, cascade and restrict deletes), and service integration tests (`@SpringBootTest`) for the nearby search, the feed paging and the importer. The database tests do not use H2 on purpose: PostgreSQL's constraints and collation are part of the design.
+145 automated tests: pure unit tests (geohash, haversine, cursor, OSM parsing, the name-search escaping), controller slice tests (`@WebMvcTest`, including the shape of every error response and which endpoints need a token), login tests (wrong password and unknown user give the same 401; changed, expired, wrongly signed or foreign-issuer tokens are rejected), repository tests against a real PostgreSQL (`@DataJpaTest`) that check the data-model rules (uniqueness, check constraints, cascade and restrict deletes), and service integration tests (`@SpringBootTest`) for the nearby search, the feed paging and the importer. The database tests do not use H2 on purpose: PostgreSQL's constraints and collation are part of the design.
 
 ## Limitations
 
-- Authentication is a plain `X-User-Id` header; real authentication (Spring Security + JWT) is the next step.
+- A token cannot be revoked before it expires (1 hour), and there is no refresh token: log in again after an hour.
+- Login is not rate-limited yet.
 - Reviews cannot be edited or deleted yet.
 - The follower, following and per-place review lists are not paginated; only the feed and a user's own reviews use cursors.
 - The feed is fan-out on read only (see above for what that costs).
