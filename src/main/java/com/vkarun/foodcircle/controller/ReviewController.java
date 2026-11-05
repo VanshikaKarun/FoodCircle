@@ -9,17 +9,19 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Objects;
 
 @Tag(name = "Reviews")
 @RestController
@@ -32,15 +34,14 @@ public class ReviewController {
         this.reviewService = reviewService;
     }
 
-    // X-User-Id is the temporary "who am I" until real authentication in week 2.
-    @Operation(summary = "Review a place (the author is X-User-Id)",
+    @Operation(summary = "Review a place (the author is the logged-in user)",
             description = "Food and ambience ratings are each 1 to 5; at least one is required. 409 if the place is closed.")
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ReviewResponse create(@PathVariable Long placeId,
-                                 @RequestHeader("X-User-Id") Long currentUserId,
+                                 @AuthenticationPrincipal Jwt jwt,
                                  @Valid @RequestBody CreateReviewRequest request) {
-        return reviewService.create(currentUserId, placeId, request);
+        return reviewService.create(Long.valueOf(Objects.requireNonNull(jwt.getSubject())), placeId, request);
     }
 
     // The newest reviews of a place. Page-by-page browsing (cursors) comes with the feed on day 5.

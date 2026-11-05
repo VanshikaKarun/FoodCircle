@@ -7,16 +7,17 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Objects;
 
-// X-User-Id is the temporary "who am I" until real authentication in week 2.
 @Tag(name = "Feed")
 @RestController
 @RequestMapping("/api")
@@ -32,10 +33,10 @@ public class FeedController {
     @Operation(summary = "Reviews from the people I follow, newest first",
             description = "Send the previous response's nextCursor as the cursor parameter to get the next page; nextCursor is null on the last page.")
     @GetMapping("/feed")
-    public CursorPage<ReviewResponse> feed(@RequestHeader("X-User-Id") Long currentUserId,
+    public CursorPage<ReviewResponse> feed(@AuthenticationPrincipal Jwt jwt,
                                            @RequestParam(required = false) String cursor,
                                            @RequestParam(defaultValue = "20") @Min(1) @Max(50) int limit) {
-        return feedService.feed(currentUserId, cursor, limit);
+        return feedService.feed(Long.valueOf(Objects.requireNonNull(jwt.getSubject())), cursor, limit);
     }
 
     // A user's own reviews; to see mine, pass my own id.
@@ -51,7 +52,7 @@ public class FeedController {
     @Operation(summary = "People I follow who reviewed this place: their latest review each")
     @GetMapping("/places/{placeId}/friends-reviews")
     public List<ReviewResponse> friendsReviews(@PathVariable Long placeId,
-                                               @RequestHeader("X-User-Id") Long currentUserId) {
-        return feedService.friendsReviews(currentUserId, placeId);
+                                               @AuthenticationPrincipal Jwt jwt) {
+        return feedService.friendsReviews(Long.valueOf(Objects.requireNonNull(jwt.getSubject())), placeId);
     }
 }

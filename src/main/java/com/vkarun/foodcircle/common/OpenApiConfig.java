@@ -17,8 +17,10 @@ public class OpenApiConfig {
                 .description("""
                         Find cafes and restaurants near you in Hyderabad and see what the people you follow thought of them.
 
-                        **Identity is temporary:** endpoints that need to know who you are take an `X-User-Id` header with a user id
-                        (create a user first with `POST /api/users`). This is not secure; real authentication comes later.
+                        **Logging in:** create a user with `POST /api/users`, then call `POST /api/auth/login`. Send the
+                        `accessToken` as `Authorization: Bearer <accessToken>` (valid 1 hour). Reads are public; the feed,
+                        friends' reviews, follow/unfollow and posting a review need the token. The caller is always the
+                        user inside the token.
 
                         **Errors** are RFC 9457 problem documents (`application/problem+json`).
 

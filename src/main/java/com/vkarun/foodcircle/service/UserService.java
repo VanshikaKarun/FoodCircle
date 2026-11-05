@@ -96,11 +96,10 @@ public class UserService {
         return result;
     }
 
-    // The user named in the temporary X-User-Id header. Unknown id = not logged in as anyone real (401).
-    // Real authentication replaces this in week 2.
+    // The caller, by the user id inside their token. A valid token whose user no longer exists = 401.
     public User requireCurrentUser(Long currentUserId) {
         return userRepository.findById(currentUserId)
-                .orElseThrow(() -> ApiException.unauthorized("Unknown user in X-User-Id"));
+                .orElseThrow(() -> ApiException.unauthorized("Unknown user"));
     }
 
     // For other services that need "this user must exist" (404 otherwise).
