@@ -10,6 +10,7 @@ import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Limit;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.util.List;
@@ -25,6 +26,9 @@ class PlaceRepositoryTest {
 
     @Autowired
     private PlaceRepository placeRepository;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     private Place place(OsmType type, long osmId, double lat, double lng) {
         return new Place(type, osmId, "Place " + osmId, PlaceCategory.CAFE, null, lat, lng, null);
@@ -50,8 +54,19 @@ class PlaceRepositoryTest {
 
     @Test
     void coordinatesOutsideTheEarthAreRejectedByTheDatabase() {
-        assertThatThrownBy(() -> placeRepository.saveAndFlush(place(OsmType.NODE, 1, 91, 78)))
+        // Plain SQL on purpose: since the switch to geohash-java (2026-11-18) the Place constructor already refuses
+        // latitude 91 in Java (see the next test), so only a direct insert still reaches the database's own CHECK.
+        assertThatThrownBy(() -> jdbcTemplate.update(
+                "insert into places (osm_type, osm_id, name, category, latitude, longitude, created_at) "
+                        + "values ('NODE', 1, 'Place 1', 'CAFE', 91, 78, now())"))
                 .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    void coordinatesOutsideTheEarthAreRejectedInJavaBeforeTheDatabase() {
+        // The geohash library refuses the point while the Place constructor computes its geohash.
+        assertThatThrownBy(() -> place(OsmType.NODE, 1, 91, 78))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
