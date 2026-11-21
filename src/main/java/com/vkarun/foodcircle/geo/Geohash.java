@@ -1,9 +1,22 @@
 package com.vkarun.foodcircle.geo;
 
-import java.util.ArrayList;
+import ch.hsr.geohash.BoundingBox;
+import ch.hsr.geohash.GeoHash;
+
+import java.util.Arrays;
 import java.util.List;
 
-// Geohash encoding by repeated halving of the latitude and longitude ranges. No Spring, no database.
+// Geohash helpers for the nearby search. No Spring, no database.
+//
+// Two implementations live in this file:
+//  - CURRENT (since 2026-11-18): encode, neighbours and decode call the open-source library geohash-java
+//    (ch.hsr:geohash 1.4.0, Apache 2.0). Before switching, GeohashLibraryComparisonTest checked that the library gives
+//    exactly the same results as our own code: 160,000 hashes (20,000 random points x lengths 1-8, in Hyderabad and
+//    worldwide) and 80,000 neighbour sets in Hyderabad, all identical. So the hashes already stored in `places` stay valid.
+//  - INITIAL (2026-10-27, written by hand): kept below each method as a comment, for reference and for explaining how
+//    geohash works (repeated halving of the latitude and longitude ranges).
+//
+// lengthForRadius is our own design choice (which cell size fits which radius) and is not part of the library.
 public final class Geohash {
 
     // The 32 symbols, in value order 0..31: digits and lower-case letters except a, i, l, o.
@@ -36,6 +49,17 @@ public final class Geohash {
         }
         return 1;   // a radius bigger than any cell: use the biggest cells
     }
+
+    // ---------------------------------------------------------------------------------------------------------------
+    // encode
+    // ---------------------------------------------------------------------------------------------------------------
+
+    // CURRENT: open-source implementation (geohash-java).
+    public static String encode(double latitude, double longitude, int length) {
+        return GeoHash.geoHashStringWithCharacterPrecision(latitude, longitude, length);
+    }
+
+    /* INITIAL: own implementation (2026-10-27), replaced by the library on 2026-11-18.
 
     public static String encode(double latitude, double longitude, int length) {
         // The range each coordinate is still known to lie in; every bit halves one of them.
@@ -83,6 +107,28 @@ public final class Geohash {
 
         return hash.toString();
     }
+    */
+
+    // ---------------------------------------------------------------------------------------------------------------
+    // neighbours
+    // ---------------------------------------------------------------------------------------------------------------
+
+    // CURRENT: open-source implementation (geohash-java). The (up to) 8 cells around this one, same length.
+    public static List<String> neighbours(String hash) {
+        BoundingBox box = GeoHash.fromGeohashString(hash).getBoundingBox();
+        double centreLatitude = box.getCenter().getLatitude();
+        double cellHeight = box.getLatitudeSize();
+
+        return Arrays.stream(GeoHash.fromGeohashString(hash).getAdjacent())
+                // Past a pole the library wraps to the opposite end of the world (north of the top row it returns cells
+                // at the South Pole). A real neighbour is at most one cell height away, so drop the wrapped ones; the
+                // initial implementation below did the same with "past a pole there is no cell". Never hit in Hyderabad.
+                .filter(n -> Math.abs(n.getBoundingBox().getCenter().getLatitude() - centreLatitude) < 1.5 * cellHeight)
+                .map(GeoHash::toBase32)
+                .toList();
+    }
+
+    /* INITIAL: own implementation (2026-10-27), replaced by the library on 2026-11-18.
 
     // The (up to) 8 cells touching this one: decode to find the centre and cell size, step one cell in each
     // direction, and encode the new centres at the same length.
@@ -113,6 +159,29 @@ public final class Geohash {
         }
         return result;
     }
+    */
+
+    // ---------------------------------------------------------------------------------------------------------------
+    // decode
+    // ---------------------------------------------------------------------------------------------------------------
+
+    // CURRENT: open-source implementation (geohash-java). The rectangle a hash stands for: centre and half its size.
+    // Not used by the search itself; kept for tests and for explaining what a cell is.
+    public static GeohashCell decode(String hash) {
+        for (char c : hash.toCharArray()) {
+            if (ALPHABET.indexOf(c) < 0) {
+                throw new IllegalArgumentException("Not a geohash character: " + c);
+            }
+        }
+        BoundingBox box = GeoHash.fromGeohashString(hash).getBoundingBox();
+        return new GeohashCell(
+                (box.getSouthLatitude() + box.getNorthLatitude()) / 2,
+                (box.getWestLongitude() + box.getEastLongitude()) / 2,
+                box.getLatitudeSize() / 2,
+                box.getLongitudeSize() / 2);
+    }
+
+    /* INITIAL: own implementation (2026-10-27), replaced by the library on 2026-11-18.
 
     // The reverse of encode: replay the same halving, but the bits now come from the characters.
     public static GeohashCell decode(String hash) {
@@ -156,4 +225,5 @@ public final class Geohash {
                 (latMax - latMin) / 2,
                 (lngMax - lngMin) / 2);
     }
+    */
 }

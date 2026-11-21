@@ -6,7 +6,7 @@ It is a learning project built to practise two classic system-design problems on
 
 | Feature | System-design problem |
 |---|---|
-| "Places near me" | **Proximity service** ("design Yelp"): a geohash implemented by hand, neighbour cells, exact distance filtering |
+| "Places near me" | **Proximity service** ("design Yelp"): geohash cells (encoding by the open-source geohash-java library), neighbour cells, exact distance filtering |
 | Feed of reviews from people I follow | **News feed**: fan-out on read, cursor pagination, why bloggers with many followers are a problem |
 
 Java 21 · Spring Boot 4.1 · PostgreSQL 18 · Spring Data JPA (Hibernate) · Gradle · JUnit 5 · k6 · springdoc-openapi
@@ -60,7 +60,7 @@ A normal index sorts by one column, but "within 2 km" is a two-dimensional quest
    -> one indexed range query per cell (coarse filter)  -> haversine distance on those rows (exact filter) -> nearest first
 ```
 
-- **Encoder, decoder and neighbours are written by hand** (`geo/Geohash`), and tested against published values from the Wikipedia article on Geohash.
+- **Encoding and neighbour cells come from the open-source [geohash-java](https://github.com/kungfoo/geohash-java) library** (`ch.hsr:geohash` 1.4.0, Apache 2.0), wrapped in `geo/Geohash`. They were first written by hand (the original code is kept as comments in `geo/Geohash`); before switching, a comparison test confirmed the library gives identical results (160,000 hashes in Hyderabad and worldwide, 80,000 neighbour sets in Hyderabad), so the stored hashes did not change. The tests still check the published values from the Wikipedia article on Geohash. Choosing the cell length from the radius, the range queries and the distance filter are this project's own code.
 - **8 characters are stored** per place; the search uses a shorter prefix chosen so that a cell is at least as large as the radius (otherwise the 3x3 block would not cover the search circle). At Hyderabad's latitude (17.4 N) the cells are, for lengths 4, 5 and 6: 19.55 x 37.30 km, 4.89 x 4.66 km and 0.61 x 1.17 km.
 - **Why the 8 neighbours:** two points a few metres apart can sit on opposite sides of a cell border and share no prefix.
 - **Why a range query and not `LIKE 'prefix%'`:** with a bound parameter PostgreSQL can switch to a generic plan that cannot use the index for `LIKE`; `geohash >= 'abc' and geohash < 'abc{'` always can. The column is `COLLATE "C"` because the database's default collation would not let a normal index serve prefix searches. Both were checked with `EXPLAIN`.
@@ -69,7 +69,7 @@ A normal index sorts by one column, but "within 2 km" is a two-dimensional quest
 
 ### Measured: geohash vs scanning every place
 
-Load test with [k6](https://k6.io) (`load-test/nearby.js`), all on one laptop (Intel i5-1135G7, 16 GB) with the app, PostgreSQL and k6 competing for the same CPU. Each request searches from a random point in central Hyderabad. 30 s measured after a warm-up. These are latencies under saturation, not service times, and each row is a single run unless stated.
+Load test with [k6](https://k6.io) (`load-test/nearby.js`), all on one laptop (Intel i5-1135G7, 16 GB) with the app, PostgreSQL and k6 competing for the same CPU. Each request searches from a random point in central Hyderabad. 30 s measured after a warm-up. These are latencies under saturation, not service times, and each row is a single run unless stated. These runs were made with the original hand-written geohash code (October 2026); the library that replaced it produces identical cells, so the database queries are the same.
 
 **Real data - 1,577 places from OpenStreetMap, 50 virtual users, radius 2 km (two runs):**
 
@@ -209,7 +209,7 @@ Full details and examples: Swagger UI.
 
 ## Tests
 
-145 automated tests: pure unit tests (geohash, haversine, cursor, OSM parsing, the name-search escaping), controller slice tests (`@WebMvcTest`, including the shape of every error response and which endpoints need a token), login tests (wrong password and unknown user give the same 401; changed, expired, wrongly signed or foreign-issuer tokens are rejected), repository tests against a real PostgreSQL (`@DataJpaTest`) that check the data-model rules (uniqueness, check constraints, cascade and restrict deletes), and service integration tests (`@SpringBootTest`) for the nearby search, the feed paging and the importer. The database tests do not use H2 on purpose: PostgreSQL's constraints and collation are part of the design.
+146 automated tests: pure unit tests (geohash, haversine, cursor, OSM parsing, the name-search escaping), controller slice tests (`@WebMvcTest`, including the shape of every error response and which endpoints need a token), login tests (wrong password and unknown user give the same 401; changed, expired, wrongly signed or foreign-issuer tokens are rejected), repository tests against a real PostgreSQL (`@DataJpaTest`) that check the data-model rules (uniqueness, check constraints, cascade and restrict deletes), and service integration tests (`@SpringBootTest`) for the nearby search, the feed paging and the importer. The database tests do not use H2 on purpose: PostgreSQL's constraints and collation are part of the design.
 
 ## Limitations
 
