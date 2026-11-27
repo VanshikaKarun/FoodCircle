@@ -3,6 +3,7 @@ package com.vkarun.foodcircle.repository;
 import com.vkarun.foodcircle.entity.OsmType;
 import com.vkarun.foodcircle.entity.Place;
 import com.vkarun.foodcircle.entity.PlaceCategory;
+import com.vkarun.foodcircle.common.AppConstants;
 import com.vkarun.foodcircle.geo.Geohash;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -96,7 +97,7 @@ class PlaceRepositoryTest {
         Place place = placeRepository.save(place(OsmType.NODE, 1, 17.385, 78.4867));
         String hash8 = place.getGeohash();
 
-        for (int length = 1; length <= Geohash.STORED_LENGTH; length++) {
+        for (int length = 1; length <= AppConstants.Geo.GEOHASH_STORED_LENGTH; length++) {
             String prefix = hash8.substring(0, length);
             assertThat(placeRepository.findOpenInGeohashRange(prefix, prefix + "{"))
                     .extracting(Place::getId).as("prefix of length " + length).contains(place.getId());

@@ -1,7 +1,7 @@
 package com.vkarun.foodcircle.service;
 
 import com.vkarun.foodcircle.common.ApiException;
-import com.vkarun.foodcircle.common.JwtConfig;
+import com.vkarun.foodcircle.common.AppConstants;
 import com.vkarun.foodcircle.dto.CreateUserRequest;
 import com.vkarun.foodcircle.dto.LoginRequest;
 import com.vkarun.foodcircle.dto.LoginResponse;
@@ -68,7 +68,7 @@ class AuthServiceIntegrationTest {
         assertThat(response.expiresIn()).isEqualTo(3600);
         Jwt jwt = jwtDecoder.decode(response.accessToken());    // throws if signature, expiry or issuer are wrong
         assertThat(jwt.getSubject()).isEqualTo(ashaId.toString());
-        assertThat(jwt.getClaimAsString("iss")).isEqualTo(JwtConfig.ISSUER);
+        assertThat(jwt.getClaimAsString("iss")).isEqualTo(AppConstants.Auth.ISSUER);
         assertThat(Duration.between(jwt.getIssuedAt(), jwt.getExpiresAt())).isEqualTo(Duration.ofHours(1));
         assertThat(jwt.getHeaders().get("alg")).isEqualTo("HS256");
     }
@@ -82,7 +82,7 @@ class AuthServiceIntegrationTest {
         Throwable unknownUser = org.assertj.core.api.Assertions.catchThrowable(
                 () -> authService.login(new LoginRequest("nobody", "password123")));
 
-        assertThat(messageOf(wrongPassword)).isEqualTo(AuthService.INVALID_LOGIN);
+        assertThat(messageOf(wrongPassword)).isEqualTo(AppConstants.Auth.INVALID_LOGIN);
         assertThat(messageOf(unknownUser)).isEqualTo(messageOf(wrongPassword));
     }
 
@@ -116,7 +116,7 @@ class AuthServiceIntegrationTest {
         JwtEncoder attackerEncoder = NimbusJwtEncoder
                 .withSecretKey(new SecretKeySpec(otherKey, "HmacSHA256")).algorithm(MacAlgorithm.HS256).build();
 
-        String token = encode(attackerEncoder, JwtConfig.ISSUER, Instant.now().plusSeconds(3600));
+        String token = encode(attackerEncoder, AppConstants.Auth.ISSUER, Instant.now().plusSeconds(3600));
 
         assertThatThrownBy(() -> jwtDecoder.decode(token)).isInstanceOf(JwtException.class);
     }
@@ -124,7 +124,7 @@ class AuthServiceIntegrationTest {
     @Test
     void anExpiredToken_isRejected() {
         // Two minutes ago: past the decoder's 60-second clock-skew allowance.
-        String token = encode(jwtEncoder, JwtConfig.ISSUER, Instant.now().minusSeconds(120));
+        String token = encode(jwtEncoder, AppConstants.Auth.ISSUER, Instant.now().minusSeconds(120));
 
         assertThatThrownBy(() -> jwtDecoder.decode(token)).isInstanceOf(JwtException.class);
     }

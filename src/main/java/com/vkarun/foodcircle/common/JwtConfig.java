@@ -18,10 +18,6 @@ import java.util.Base64;
 @Configuration
 public class JwtConfig {
 
-    public static final String ISSUER = "foodcircle";
-
-    static final int MIN_KEY_BYTES = 32;
-
     private final SecretKey key;
 
     public JwtConfig(JwtProperties properties) {
@@ -38,7 +34,7 @@ public class JwtConfig {
     @Bean
     public JwtDecoder jwtDecoder() {
         NimbusJwtDecoder decoder = NimbusJwtDecoder.withSecretKey(key).macAlgorithm(MacAlgorithm.HS256).build();
-        decoder.setJwtValidator(JwtValidators.createDefaultWithIssuer(ISSUER));
+        decoder.setJwtValidator(JwtValidators.createDefaultWithIssuer(AppConstants.Auth.ISSUER));
         return decoder;
     }
 
@@ -50,9 +46,9 @@ public class JwtConfig {
         } catch (IllegalArgumentException e) {
             throw new IllegalStateException("foodcircle.jwt.secret (FOODCIRCLE_JWT_SECRET) is not valid Base64");
         }
-        if (bytes.length < MIN_KEY_BYTES) {
+        if (bytes.length < AppConstants.Auth.MIN_KEY_BYTES) {
             throw new IllegalStateException("foodcircle.jwt.secret (FOODCIRCLE_JWT_SECRET) must be at least "
-                    + MIN_KEY_BYTES + " bytes for HS256, but is " + bytes.length);
+                    + AppConstants.Auth.MIN_KEY_BYTES + " bytes for HS256, but is " + bytes.length);
         }
         return new SecretKeySpec(bytes, "HmacSHA256");
     }

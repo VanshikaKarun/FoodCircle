@@ -17,4 +17,3 @@ logging:
 foodcircle:
   jwt:
     secret: ${FOODCIRCLE_JWT_SECRET}
-    expiry: 1h

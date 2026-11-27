@@ -4,6 +4,7 @@ import com.vkarun.foodcircle.dto.ImportResult;
 import com.vkarun.foodcircle.entity.OsmType;
 import com.vkarun.foodcircle.entity.Place;
 import com.vkarun.foodcircle.entity.PlaceCategory;
+import com.vkarun.foodcircle.common.AppConstants;
 import com.vkarun.foodcircle.geo.Geohash;
 import com.vkarun.foodcircle.repository.PlaceRepository;
 import org.junit.jupiter.api.Test;
@@ -88,7 +89,7 @@ class OsmImporterIntegrationTest {
         assertThat(way.getCategory()).isEqualTo(PlaceCategory.RESTAURANT);
         assertThat(way.getCuisine()).isEqualTo("indian");
         assertThat(way.getLatitude()).isEqualTo(17.4);                      // taken from "center"
-        assertThat(way.getGeohash()).isEqualTo(Geohash.encode(17.4, 78.4, Geohash.STORED_LENGTH));
+        assertThat(way.getGeohash()).isEqualTo(Geohash.encode(17.4, 78.4, AppConstants.Geo.GEOHASH_STORED_LENGTH));
         assertThat(placeRepository.findByOsmTypeAndOsmId(OsmType.NODE, 9001L)).isEmpty();   // skipped: no name
     }
 }

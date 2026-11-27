@@ -38,7 +38,7 @@ class JwtConfigTest {
 
     @Test
     void propertiesToString_hidesTheSecret() {
-        JwtProperties properties = new JwtProperties("super-secret-value", java.time.Duration.ofHours(1));
-        assertThat(properties.toString()).doesNotContain("super-secret-value").contains("PT1H");
+        JwtProperties properties = new JwtProperties("super-secret-value");
+        assertThat(properties.toString()).doesNotContain("super-secret-value");
     }
 }

@@ -1,6 +1,7 @@
 package com.vkarun.foodcircle.geo;
 
 import ch.hsr.geohash.BoundingBox;
+import com.vkarun.foodcircle.common.AppConstants;
 import ch.hsr.geohash.GeoHash;
 
 import java.util.Arrays;
@@ -19,12 +20,6 @@ import java.util.List;
 // lengthForRadius is our own design choice (which cell size fits which radius) and is not part of the library.
 public final class Geohash {
 
-    // The 32 symbols, in value order 0..31: digits and lower-case letters except a, i, l, o.
-    private static final String ALPHABET = "0123456789bcdefghjkmnpqrstuvwxyz";
-
-    // How many characters we store per place (about 38 m x 19 m cells). Searches use a shorter prefix of it.
-    public static final int STORED_LENGTH = 8;
-
     private Geohash() {
     }
 
@@ -35,10 +30,10 @@ public final class Geohash {
         if (radiusKm <= 0) {
             throw new IllegalArgumentException("Radius must be positive: " + radiusKm);
         }
-        double kmPerDegree = 2 * Math.PI * Haversine.EARTH_RADIUS_KM / 360;
+        double kmPerDegree = 2 * Math.PI * AppConstants.Geo.EARTH_RADIUS_KM / 360;
         double lngShrink = Math.cos(Math.toRadians(latitude));
 
-        for (int length = STORED_LENGTH; length >= 1; length--) {
+        for (int length = AppConstants.Geo.GEOHASH_STORED_LENGTH; length >= 1; length--) {
             int latBits = (5 * length) / 2;          // latitude gets the 2nd, 4th, ... bit, so the smaller share
             int lngBits = (5 * length + 1) / 2;      // longitude goes first, so it gets the larger share
             double height = 180.0 / Math.pow(2, latBits) * kmPerDegree;
@@ -99,7 +94,7 @@ public final class Geohash {
             bitsInVal++;
             longitudeTurn = !longitudeTurn;
             if(bitsInVal == 5){
-                hash.append(ALPHABET.charAt(val));
+                hash.append(AppConstants.Geo.GEOHASH_ALPHABET.charAt(val));
                 val = 0;
                 bitsInVal = 0;
             }
@@ -169,7 +164,7 @@ public final class Geohash {
     // Not used by the search itself; kept for tests and for explaining what a cell is.
     public static GeohashCell decode(String hash) {
         for (char c : hash.toCharArray()) {
-            if (ALPHABET.indexOf(c) < 0) {
+            if (AppConstants.Geo.GEOHASH_ALPHABET.indexOf(c) < 0) {
                 throw new IllegalArgumentException("Not a geohash character: " + c);
             }
         }
@@ -193,7 +188,7 @@ public final class Geohash {
         boolean longitudeTurn = true;
 
         for (char c : hash.toCharArray()) {
-            int value = ALPHABET.indexOf(c);   // the character's position, 0..31
+            int value = AppConstants.Geo.GEOHASH_ALPHABET.indexOf(c);   // the character's position, 0..31
             if (value < 0) {
                 throw new IllegalArgumentException("Not a geohash character: " + c);
             }

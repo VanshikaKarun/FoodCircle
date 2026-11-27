@@ -1,11 +1,9 @@
 package com.vkarun.foodcircle.geo;
 
+import com.vkarun.foodcircle.common.AppConstants;
+
 // Distance between two points on the Earth's surface (a sphere), no Spring and no database.
 public final class Haversine {
-
-    // Mean Earth radius in km (the usual value for this formula). The Earth is not a perfect sphere,
-    // so results can be off by a fraction of a percent, which is fine for "places within 2 km".
-    static final double EARTH_RADIUS_KM = 6371.0088;
 
     private Haversine() {
     }
@@ -20,6 +18,6 @@ public final class Haversine {
         double a = Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2)
                 + Math.cos(phi1) * Math.cos(phi2) * Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2);
 
-        return 2 * EARTH_RADIUS_KM * Math.asin(Math.sqrt(a));
+        return 2 * AppConstants.Geo.EARTH_RADIUS_KM * Math.asin(Math.sqrt(a));
     }
 }
