@@ -10,6 +10,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import com.vkarun.foodcircle.common.AppConstants;
 import com.vkarun.foodcircle.geo.Geohash;
 import org.hibernate.annotations.Check;
 
@@ -55,7 +56,7 @@ public class Place {
     @Column(name = "address", length = 300)
     private String address;
 
-    // The location as a geohash (Geohash.STORED_LENGTH characters), for the nearby search. Always set by our code, but the
+    // The location as a geohash (AppConstants.Geo.GEOHASH_STORED_LENGTH characters), for the nearby search. Always set by our code, but the
     // column is nullable because ddl-auto=update cannot add a NOT NULL column to a table that already has rows.
     // Collation "C" compares byte by byte, which is what lets a normal index serve LIKE 'prefix%' (the database default,
     // English_United States.1252, would not).
@@ -83,7 +84,7 @@ public class Place {
         this.latitude = latitude;
         this.longitude = longitude;
         this.address = address;
-        this.geohash = Geohash.encode(latitude, longitude, Geohash.STORED_LENGTH);
+        this.geohash = Geohash.encode(latitude, longitude, AppConstants.Geo.GEOHASH_STORED_LENGTH);
         this.createdAt = Instant.now();
     }
 
@@ -96,7 +97,7 @@ public class Place {
         this.latitude = latitude;
         this.longitude = longitude;
         this.address = address;
-        this.geohash = Geohash.encode(latitude, longitude, Geohash.STORED_LENGTH);
+        this.geohash = Geohash.encode(latitude, longitude, AppConstants.Geo.GEOHASH_STORED_LENGTH);
     }
 
     public void markClosed() {

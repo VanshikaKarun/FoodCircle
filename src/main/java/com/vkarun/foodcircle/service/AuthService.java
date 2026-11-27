@@ -1,8 +1,7 @@
 package com.vkarun.foodcircle.service;
 
 import com.vkarun.foodcircle.common.ApiException;
-import com.vkarun.foodcircle.common.JwtConfig;
-import com.vkarun.foodcircle.common.JwtProperties;
+import com.vkarun.foodcircle.common.AppConstants;
 import com.vkarun.foodcircle.dto.LoginRequest;
 import com.vkarun.foodcircle.dto.LoginResponse;
 import com.vkarun.foodcircle.entity.User;
@@ -28,24 +27,19 @@ public class AuthService {
 
     private static final Logger log = LoggerFactory.getLogger(AuthService.class);
 
-    // One message for both "no such user" and "wrong password", so a caller cannot find out which usernames exist.
-    static final String INVALID_LOGIN = "Invalid username or password";
-
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtEncoder jwtEncoder;
-    private final JwtProperties jwtProperties;
 
     // Checked when the username does not exist, so that case costs one BCrypt check too and takes about as long
     // as a wrong password. Otherwise the response time would reveal which usernames exist. Not a secret: no user has it.
     private final String dummyHash;
 
     public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder,
-                       JwtEncoder jwtEncoder, JwtProperties jwtProperties) {
+                       JwtEncoder jwtEncoder) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtEncoder = jwtEncoder;
-        this.jwtProperties = jwtProperties;
         this.dummyHash = passwordEncoder.encode("timing-equaliser-not-a-real-password");
     }
 
@@ -57,12 +51,13 @@ public class AuthService {
 
         if (user.isEmpty() || !passwordMatches) {
             // Not logged here: ApiExceptionHandler logs every 4xx once at DEBUG.
-            throw ApiException.unauthorized(INVALID_LOGIN);
+            // One message for both "no such user" and "wrong password", so a caller cannot find out which usernames exist.
+            throw ApiException.unauthorized(AppConstants.Auth.INVALID_LOGIN);
         }
 
         String token = issueToken(user.get().getId());
         log.info("user {} logged in", user.get().getId());
-        return LoginResponse.bearer(token, jwtProperties.expiry().toSeconds());
+        return LoginResponse.bearer(token, AppConstants.Auth.TOKEN_EXPIRY.toSeconds());
     }
 
     // The token says only who the caller is (sub = user id) and when it stops working.
@@ -70,10 +65,10 @@ public class AuthService {
     private String issueToken(Long userId) {
         Instant now = Instant.now().truncatedTo(ChronoUnit.SECONDS);    // JWT times are whole seconds
         JwtClaimsSet claims = JwtClaimsSet.builder()
-                .issuer(JwtConfig.ISSUER)
+                .issuer(AppConstants.Auth.ISSUER)
                 .subject(userId.toString())
                 .issuedAt(now)
-                .expiresAt(now.plus(jwtProperties.expiry()))
+                .expiresAt(now.plus(AppConstants.Auth.TOKEN_EXPIRY))
                 .build();
         // The header must name HS256; without it Spring assumes RS256 and finds no matching key.
         JwsHeader header = JwsHeader.with(MacAlgorithm.HS256).build();

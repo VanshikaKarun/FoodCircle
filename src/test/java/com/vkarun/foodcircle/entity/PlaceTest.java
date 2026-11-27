@@ -1,5 +1,6 @@
 package com.vkarun.foodcircle.entity;
 
+import com.vkarun.foodcircle.common.AppConstants;
 import com.vkarun.foodcircle.geo.Geohash;
 import org.junit.jupiter.api.Test;
 
@@ -11,8 +12,8 @@ class PlaceTest {
     void newPlace_getsItsGeohashFromItsCoordinates() {
         Place place = new Place(OsmType.NODE, 1L, "KFC", PlaceCategory.FAST_FOOD, "chicken", 17.4507642, 78.3793915, null);
 
-        assertThat(place.getGeohash()).hasSize(Geohash.STORED_LENGTH)
-                .isEqualTo(Geohash.encode(17.4507642, 78.3793915, Geohash.STORED_LENGTH));
+        assertThat(place.getGeohash()).hasSize(AppConstants.Geo.GEOHASH_STORED_LENGTH)
+                .isEqualTo(Geohash.encode(17.4507642, 78.3793915, AppConstants.Geo.GEOHASH_STORED_LENGTH));
     }
 
     @Test
@@ -23,6 +24,6 @@ class PlaceTest {
         place.updateFromOsm("KFC", PlaceCategory.FAST_FOOD, null, 17.30, 78.60, null);
 
         assertThat(place.getGeohash()).isNotEqualTo(before)
-                .isEqualTo(Geohash.encode(17.30, 78.60, Geohash.STORED_LENGTH));
+                .isEqualTo(Geohash.encode(17.30, 78.60, AppConstants.Geo.GEOHASH_STORED_LENGTH));
     }
 }

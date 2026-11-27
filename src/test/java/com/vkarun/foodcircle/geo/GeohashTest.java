@@ -1,5 +1,7 @@
 package com.vkarun.foodcircle.geo;
 
+import com.vkarun.foodcircle.common.AppConstants;
+
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -128,7 +130,7 @@ class GeohashTest {
 
     @Test
     void lengthForRadius_neverExceedsTheStoredLength() {
-        assertThat(Geohash.lengthForRadius(0.001, 17.4)).isEqualTo(Geohash.STORED_LENGTH);
+        assertThat(Geohash.lengthForRadius(0.001, 17.4)).isEqualTo(AppConstants.Geo.GEOHASH_STORED_LENGTH);
     }
 
     @Test
