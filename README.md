@@ -117,7 +117,7 @@ The feed for a user is "all reviews written by people I follow, newest first".
 
 ## Getting started
 
-**Prerequisites:** JDK 21, PostgreSQL (developed on 18), and optionally k6.
+**Prerequisites:** JDK 21, PostgreSQL (developed on 18), and optionally k6 and [Ollama](https://ollama.com/).
 
 **1. Create the database** (as a PostgreSQL superuser):
 
@@ -179,6 +179,14 @@ Hibernate creates the tables on first start. To call the endpoints that need to 
 .\gradlew.bat test      # uses the foodcircle_test database; it creates and drops its tables each run
 ```
 
+**Optional: Ollama** (a free local model server). It is only needed for the embedding client tests for now; without it those tests are skipped, not failed. Install Ollama, then download the embedding model:
+
+```powershell
+ollama pull nomic-embed-text
+```
+
+The app talks to Ollama's OpenAI-compatible API (`POST /v1/embeddings`) at `http://localhost:11434`. The URL and model names are in `common/AppConstants`.
+
 **Load test** (start the app first):
 
 ```powershell
@@ -209,7 +217,7 @@ Full details and examples: Swagger UI.
 
 ## Tests
 
-146 automated tests: pure unit tests (geohash, haversine, cursor, OSM parsing, the name-search escaping), controller slice tests (`@WebMvcTest`, including the shape of every error response and which endpoints need a token), login tests (wrong password and unknown user give the same 401; changed, expired, wrongly signed or foreign-issuer tokens are rejected), repository tests against a real PostgreSQL (`@DataJpaTest`) that check the data-model rules (uniqueness, check constraints, cascade and restrict deletes), and service integration tests (`@SpringBootTest`) for the nearby search, the feed paging and the importer. The database tests do not use H2 on purpose: PostgreSQL's constraints and collation are part of the design.
+149 automated tests: pure unit tests (geohash, haversine, cursor, OSM parsing, the name-search escaping), controller slice tests (`@WebMvcTest`, including the shape of every error response and which endpoints need a token), login tests (wrong password and unknown user give the same 401; changed, expired, wrongly signed or foreign-issuer tokens are rejected), repository tests against a real PostgreSQL (`@DataJpaTest`) that check the data-model rules (uniqueness, check constraints, cascade and restrict deletes), service integration tests (`@SpringBootTest`) for the nearby search, the feed paging and the importer, and 3 tests of the embedding client against a real local Ollama (768 numbers per vector, vector length about 1, a similar text scores higher than an unrelated one), which skip themselves when Ollama is not running. The database tests do not use H2 on purpose: PostgreSQL's constraints and collation are part of the design.
 
 ## Limitations
 
@@ -220,6 +228,7 @@ Full details and examples: Swagger UI.
 - The feed is fan-out on read only (see above for what that costs).
 - OpenStreetMap address data is thin: about 80% of the imported places have no address, so the app identifies a place by name, cuisine and distance.
 - One machine, one database; no caching, no deployment.
+- Semantic review search with a local embedding model (Ollama) is in progress: so far only the embedding client and its tests exist, no endpoint uses it yet.
 
 ## Data and credits
 
