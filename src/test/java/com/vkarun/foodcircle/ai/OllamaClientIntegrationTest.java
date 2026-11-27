@@ -47,6 +47,27 @@ class OllamaClientIntegrationTest {
         assertThat(length(vector)).isCloseTo(1.0, within(0.01));
     }
 
+    // Check 3: the numbers carry meaning. A text about a calm coffee shop must be closer to our cafe text
+    // than a text about biryani. Semantic review search depends on exactly this.
+    @Test
+    void embed_similarTextsScoreHigherThanUnrelatedOnes() {
+        float[] cafe = client.embed("quiet cafe with good filter coffee");
+        float[] similar = client.embed("calm coffee shop");
+        float[] unrelated = client.embed("spicy chicken biryani");
+
+        assertThat(cosine(cafe, similar)).isGreaterThan(cosine(cafe, unrelated));
+    }
+
+    // Cosine similarity: how much two vectors point the same way. 1 = same direction, 0 = unrelated.
+    // Full formula (dot product / both lengths), so this check does not depend on check 2.
+    private static double cosine(float[] a, float[] b) {
+        double dot = 0;
+        for (int i = 0; i < a.length; i++) {
+            dot += a[i] * b[i];
+        }
+        return dot / (length(a) * length(b));
+    }
+
     // Length of a vector = square root of the sum of its squared numbers (Pythagoras in 768 dimensions).
     private static double length(float[] vector) {
         double sumOfSquares = 0;

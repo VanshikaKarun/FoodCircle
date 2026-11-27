@@ -27,14 +27,15 @@ public class OllamaClient {
     // Turns one text into its vector (768 numbers for nomic-embed-text).
     public float[] embed(String text) {
         EmbedResponse response = restClient.post()
-                .uri("/api/embed")
+                .uri("/v1/embeddings")                                                // OpenAI-compatible endpoint
                 .body(new EmbedRequest(AppConstants.Ollama.EMBEDDING_MODEL, text))   // sent as JSON
                 .retrieve()                                                           // a 4xx/5xx from Ollama throws here
                 .body(EmbedResponse.class);                                           // JSON -> record
 
-        if (response == null || response.embeddings() == null || response.embeddings().isEmpty()) {
+        if (response == null || response.data() == null || response.data().isEmpty()
+                || response.data().get(0).embedding() == null) {
             throw new IllegalStateException("Ollama returned no embedding");
         }
-        return response.embeddings().get(0);    // one text in, so exactly one vector out
+        return response.data().get(0).embedding();    // one text in, so exactly one vector out
     }
 }
